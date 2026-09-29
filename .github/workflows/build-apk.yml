@@ -23,6 +23,7 @@ jobs:
 
       - name: Obtener el código (desde el zip o desde la carpeta lib)
         run: |
+          set -x
           if [ -d lib ]; then
             SRC=.
           else
@@ -38,6 +39,8 @@ jobs:
           rm -rf /tmp/app/lib
           cp -r $SRC/lib /tmp/app/lib
           cp $SRC/pubspec.yaml /tmp/app/pubspec.yaml
+          # Deja que Flutter elija las versiones compatibles de estas librerías
+          sed -i 's/^  intl: .*/  intl: any/; s/^  flutter_lints: .*/  flutter_lints: any/' /tmp/app/pubspec.yaml
           M=/tmp/app/android/app/src/main/AndroidManifest.xml
           sed -i '0,/<manifest[^>]*>/s//&\n    <uses-permission android:name="android.permission.CAMERA" \/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO" \/>\n    <uses-permission android:name="android.permission.WAKE_LOCK" \/>\n    <uses-feature android:name="android.hardware.camera" \/>/' $M
 
