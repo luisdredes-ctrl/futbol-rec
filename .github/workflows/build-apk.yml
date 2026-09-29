@@ -1,0 +1,55 @@
+name: Compilar APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Obtener el código (desde el zip o desde la carpeta lib)
+        run: |
+          if [ -d lib ]; then
+            SRC=.
+          else
+            unzip -oq futbol-rec-github.zip -d /tmp/src
+            SRC=$(dirname $(find /tmp/src -name pubspec.yaml | head -1))
+          fi
+          echo "SRC=$SRC" >> $GITHUB_ENV
+          ls -la $SRC
+
+      - name: Crear proyecto y copiar código
+        run: |
+          flutter create --org com.futbolrec --project-name futbol_rec --platforms android /tmp/app
+          rm -rf /tmp/app/lib
+          cp -r $SRC/lib /tmp/app/lib
+          cp $SRC/pubspec.yaml /tmp/app/pubspec.yaml
+          M=/tmp/app/android/app/src/main/AndroidManifest.xml
+          sed -i '0,/<manifest[^>]*>/s//&\n    <uses-permission android:name="android.permission.CAMERA" \/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO" \/>\n    <uses-permission android:name="android.permission.WAKE_LOCK" \/>\n    <uses-feature android:name="android.hardware.camera" \/>/' $M
+
+      - name: Compilar
+        working-directory: /tmp/app
+        run: |
+          flutter pub get
+          flutter build apk --release
+          mv build/app/outputs/flutter-apk/app-release.apk /tmp/FutbolRec.apk
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutbolRec
+          path: /tmp/FutbolRec.apk
